@@ -81,9 +81,8 @@ void *threadInit(void* argument) {
     for (wc = list_begin(ptr); wc != list_end(ptr); wc = list_next(wc)){
         word_count_t *element = list_entry(wc, word_count_t, elem);
         word_count_t *newElement = add_word(data->sharedWordCount, element->word);
-        int count = element->count;
-        newElement->count = 0; 
-        for (int i = 0; i < count; i++ ){
+        int count = element->count; 
+        for (int i = 1; i < count; i++ ){
             newElement->count = newElement->count + 1;
         }
     }

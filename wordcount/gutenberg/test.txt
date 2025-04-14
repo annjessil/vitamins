@@ -1,7 +1,8 @@
-Testing words.
-Count Count Count.
-One
-Two Two.
-Three Three Three.
-Four Four Four Four.
-Five Five Five Five Five.
+l 
+     
+     . !
+, ;
+
+
+
+word
