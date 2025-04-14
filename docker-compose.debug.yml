@@ -1,0 +1,6 @@
+services:
+  vitamins:
+    image: vitamins
+    build:
+      context: .
+      dockerfile: ./Dockerfile

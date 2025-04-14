@@ -21,22 +21,29 @@
  */
 
 #ifndef PINTOS_LIST
-#error "PINTOS_LIST must be #define'd when compiling word_count_l.c"
+//#error "PINTOS_LIST must be #define'd when compiling word_count_l.c"
 #endif
 
 #include "word_count.h"
 
 void init_words(word_count_list_t *wclist) {
-    /* TODO */
+    list_init(wclist); 
 }
 
 size_t len_words(word_count_list_t *wclist) {
-    /* TODO */
-    return 0;
+    return list_size(&(*wclist));
 }
 
 word_count_t *find_word(word_count_list_t *wclist, char *word) {
-    /* TODO */
+
+    struct list_elem *wc = list_begin(wclist);
+    for (wc = list_begin(wclist); wc != list_end(wclist); wc = list_next(wc)){
+        word_count_t *element = list_entry(wc, word_count_t, elem);
+        if (strcmp(word, element->word) == 0){
+            return element;
+        }
+    }
+
     return NULL;
 }
 
