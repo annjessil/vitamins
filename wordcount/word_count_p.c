@@ -64,27 +64,23 @@ word_count_t *add_word(word_count_list_t *wclist, char *word) {
 
         newWC->count = 1;
         newWC->word = word; //strdup(word), if having issues
-        pthread_mutex_lock(&wclist->lock); //LOCK
-
         list_push_back(&wclist->lst, &newWC->elem);
-
-        pthread_mutex_unlock(&wclist->lock);
         return newWC;
     }
 }
 
 void fprint_words(word_count_list_t *wclist, FILE *outfile) {
     struct list_elem *wc = list_begin(&wclist->lst);
-    pthread_mutex_lock(&wclist->lock); //LOCK
     for (wc = list_begin(&wclist->lst); wc != list_end(&wclist->lst); wc = list_next(wc)) {
         word_count_t *element = list_entry(wc, word_count_t, elem);
         fprintf(outfile, "%8d\t%s\n", element->count, element->word);
     }
-    pthread_mutex_unlock(&wclist->lock);
+
 }
 
 void wordcount_sort(word_count_list_t *wclist,
                     bool less(const word_count_t *, const word_count_t *)) {
-    //list_sort(wclist, less, NULL);
-    return;
+    
+    list_sort(&wclist->lst, list_less_func(*less), NULL);
 }
+

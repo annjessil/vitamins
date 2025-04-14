@@ -92,10 +92,15 @@ void fprint_words(word_count_list_t *wclist, FILE *outfile) {
 
 static bool less_list(const struct list_elem *ewc1,
                       const struct list_elem *ewc2, void *aux) {
-    //if first entry is less than second returns true               
+    //if first entry is less than second returns true    
+    bool (*less)(const word_count_t *, const word_count_t *) = aux; 
+
     word_count_t *elem1 = list_entry(ewc1, word_count_t, elem);
     word_count_t *elem2 = list_entry(ewc2, word_count_t, elem);
 
+    return less(elem1, elem2);
+
+    /*
     if (elem1->count < elem2->count){
         return true;
     } else if (elem1->count == elem2->count){
@@ -105,6 +110,7 @@ static bool less_list(const struct list_elem *ewc1,
     } 
 
     return false;
+    */
 
 }
 
@@ -112,6 +118,8 @@ static bool less_list(const struct list_elem *ewc1,
 void wordcount_sort(word_count_list_t *wclist, bool less(const word_count_t *, const word_count_t *)) {
     //sorting by word or count??
     //placeholder need to figure out how to actually do this lol
-    list_sort(wclist, less_list, NULL);
+    
+    list_sort(wclist, less_list, less);
+
 }
 
