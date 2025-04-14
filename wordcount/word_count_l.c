@@ -35,7 +35,6 @@ size_t len_words(word_count_list_t *wclist) {
 }
 
 word_count_t *find_word(word_count_list_t *wclist, char *word) {
-
     struct list_elem *wc = list_begin(wclist);
     for (wc = list_begin(wclist); wc != list_end(wclist); wc = list_next(wc)){
         word_count_t *element = list_entry(wc, word_count_t, elem);
@@ -112,6 +111,7 @@ static bool less_list(const struct list_elem *ewc1,
 
 void wordcount_sort(word_count_list_t *wclist, bool less(const word_count_t *, const word_count_t *)) {
     //sorting by word or count??
-    list_sort(wclist, less, NULL);
+    //placeholder need to figure out how to actually do this lol
+    list_sort(wclist, less_list, NULL);
 }
 

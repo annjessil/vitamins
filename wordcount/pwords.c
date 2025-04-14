@@ -32,14 +32,32 @@
 #include "word_count.h"
 #include "word_helpers.h"
 
+#define NUM_THREADS 4
+int common = 162;
+char *somethingshared;
+
 /*
  * main - handle command line, spawning one thread per file.
  */
+
+void *threadfun(void *threadid) {
+    long tid;
+    tid = (long) threadid;
+    printf("Thread #%lx stack: %lx common: %lx (%d) tptr: %lx\n", tid,
+           (unsigned long) &tid, (unsigned long) &common, common++,
+           (unsigned long) threadid);
+    printf("%lx: %s\n", (unsigned long) somethingshared, somethingshared + tid);
+    pthread_exit(NULL);
+}
+
 int main(int argc, char *argv[]) {
     /* Create the empty data structure. */
     word_count_list_t word_counts;
     init_words(&word_counts);
+    pthread_t thread_id;
 
+    pthread_create(&thread_id, NULL, threadfun, NULL);
+    
     if (argc <= 1) {
         /* Process stdin in a single thread. */
         count_words(&word_counts, stdin);
@@ -48,7 +66,11 @@ int main(int argc, char *argv[]) {
     }
 
     /* Output final result of all threads' work. */
+    pthread_join(thread_id, NULL);
     wordcount_sort(&word_counts, less_count);
     fprint_words(&word_counts, stdout);
+
+    pthread_exit(NULL);
     return 0;
+
 }
