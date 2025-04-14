@@ -78,9 +78,26 @@ void fprint_words(word_count_list_t *wclist, FILE *outfile) {
 
 }
 
+static bool less_list(const struct list_elem *ewc1,
+                      const struct list_elem *ewc2, void *aux) {
+    //if first entry is less than second returns true    
+    bool (*less)(const word_count_t *, const word_count_t *) = aux; 
+
+    word_count_t *elem1 = list_entry(ewc1, word_count_t, elem);
+    word_count_t *elem2 = list_entry(ewc2, word_count_t, elem);
+
+    return less(elem1, elem2);
+
+}
+
 void wordcount_sort(word_count_list_t *wclist,
                     bool less(const word_count_t *, const word_count_t *)) {
     
-    list_sort(&wclist->lst, list_less_func(*less), NULL);
+   // bool (*fptr) (const word_count_t *, const word_count_t *) = less;
+    //const struct list_elem *a,
+    //const struct list_elem *b, void *aux
+
+
+    list_sort(&wclist->lst, less_list, less);
 }
 

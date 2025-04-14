@@ -32,6 +32,10 @@
 #include "word_count.h"
 #include "word_helpers.h"
 
+#define NUM_THREADS 4
+int common = 162;
+char *somethingshared;
+
 typedef struct {
     char* filename;
     pthread_mutex_t *localLock;
@@ -43,19 +47,27 @@ typedef struct {
  */
 
 void *threadInit(void* argument) {
+    
     threadData *data = (threadData*)argument;
 
+    printf("Opening File: %s\n", data->filename);
+    int myid = pthread_self();
+    printf("Thread ID: %d\n", myid);
+    printf("Thread for %s started\n", data->filename);
+    sleep(3); 
+/*
     if (!data || !data->filename) {
        // fprintf(stderr, "Invalid thread data or filename\n");
         pthread_exit(NULL);
-    }
+    } */
 
     FILE *file = fopen(data->filename, "r");
+    /*
     if (!file) {
         perror("File open error");
         pthread_exit(NULL);  
     }
-
+*/
     word_count_list_t locallist;
     init_words(&locallist);
     count_words(&locallist, file);
@@ -63,12 +75,14 @@ void *threadInit(void* argument) {
 
     pthread_mutex_lock(data->localLock);
     //critical section, adding local data to shared list
+    printf("In critical section, Thread ID: %d\n", myid);
     struct list *ptr = &locallist.lst;
     struct list_elem *wc = list_begin(ptr);
     for (wc = list_begin(ptr); wc != list_end(ptr); wc = list_next(wc)){
         word_count_t *element = list_entry(wc, word_count_t, elem);
         word_count_t *newElement = add_word(data->sharedWordCount, element->word);
         int count = element->count;
+        newElement->count = 0; 
         for (int i = 0; i < count; i++ ){
             newElement->count = newElement->count + 1;
         }
@@ -78,42 +92,44 @@ void *threadInit(void* argument) {
 
 }
 
+
+
+
+
 int main(int argc, char *argv[]) {
     /* Create the empty data structure. */
     word_count_list_t word_counts;
     init_words(&word_counts);
+
+    int nthreads = argc - 1;
+    threadData tArgs[nthreads];
+    pthread_t threads[nthreads];
     pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-
-
-    int numFiles = argc - 1;
-    pthread_t threads[numFiles];
-    threadData threadSpecificData[numFiles];
-
     
+
     if (argc <= 1) {
-        /* Process stdin in a single thread. */
         count_words(&word_counts, stdin);
     } else {
-        for (int i = 0; i < numFiles; i++){
-            threadSpecificData[i].filename = argv[i+1];
-            threadSpecificData[i].sharedWordCount = &word_counts;
-            threadSpecificData[i].localLock = &lock;
-            pthread_create(&threads[i], NULL, threadInit, &threadSpecificData[i]);
+        for (int i = 0; i < nthreads; i++){
+            tArgs[i].filename = argv[i + 1];
+            tArgs[i].sharedWordCount = &word_counts;
+            tArgs[i].localLock = &lock;
+            pthread_create(&threads[i], NULL, threadInit, &tArgs[i]);
+
+            //printf(tArgs[i].filename);
         }
     }
 
+    // Output final result of all threads' work. 
 
-
-    /* Output final result of all threads' work. */
-    for (int i = 0; i < numFiles; i++) {
+    for (int i = 0; i < nthreads; i++) {
         pthread_join(threads[i], NULL);
     }
-    wordcount_sort(&word_counts, less_count);
 
+    wordcount_sort(&word_counts, less_count);
     fprint_words(&word_counts, stdout);
 
     pthread_exit(NULL);
-
 
     return 0;
 
