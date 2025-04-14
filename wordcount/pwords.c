@@ -50,11 +50,11 @@ void *threadInit(void* argument) {
     
     threadData *data = (threadData*)argument;
 
-    printf("Opening File: %s\n", data->filename);
-    int myid = pthread_self();
-    printf("Thread ID: %d\n", myid);
-    printf("Thread for %s started\n", data->filename);
-    sleep(3); 
+    //printf("Opening File: %s\n", data->filename);
+  //  int myid = pthread_self();
+   // printf("Thread ID: %d\n", myid);
+   // printf("Thread for %s started\n", data->filename);
+   // sleep(3); 
 /*
     if (!data || !data->filename) {
        // fprintf(stderr, "Invalid thread data or filename\n");
@@ -75,7 +75,7 @@ void *threadInit(void* argument) {
 
     pthread_mutex_lock(data->localLock);
     //critical section, adding local data to shared list
-    printf("In critical section, Thread ID: %d\n", myid);
+   // printf("In critical section, Thread ID: %d\n", myid);
     struct list *ptr = &locallist.lst;
     struct list_elem *wc = list_begin(ptr);
     for (wc = list_begin(ptr); wc != list_end(ptr); wc = list_next(wc)){
