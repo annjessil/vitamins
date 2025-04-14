@@ -112,6 +112,6 @@ static bool less_list(const struct list_elem *ewc1,
 
 void wordcount_sort(word_count_list_t *wclist, bool less(const word_count_t *, const word_count_t *)) {
     //sorting by word or count??
-    list_sort(wclist, less_list, NULL);
+    list_sort(wclist, less, NULL);
 }
 
