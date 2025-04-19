@@ -100,25 +100,11 @@ static bool less_list(const struct list_elem *ewc1,
 
     return less(elem1, elem2);
 
-    /*
-    if (elem1->count < elem2->count){
-        return true;
-    } else if (elem1->count == elem2->count){
-        if(strcmp(elem1->word, elem2->word) < 0){
-            return true;
-        } 
-    } 
-
-    return false;
-    */
-
 }
 
 
 void wordcount_sort(word_count_list_t *wclist, bool less(const word_count_t *, const word_count_t *)) {
-    //sorting by word or count??
-    //placeholder need to figure out how to actually do this lol
-    
+    //sorting by word or count??    
     list_sort(wclist, less_list, less);
 
 }

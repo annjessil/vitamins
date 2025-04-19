@@ -36,6 +36,7 @@
 /*
  * Read stream of counts and accumulate globally.
  */
+
 void merge_counts(word_count_list_t *wclist, FILE *count_stream) {
     char *word;
     int count;
@@ -57,21 +58,52 @@ int main(int argc, char *argv[]) {
     /* Create the empty data structure. */
     word_count_list_t word_counts;
     init_words(&word_counts);
+    int bound = argc - 1; //1 = self
+    int pipefd[2];
+
+    
 
     if (argc <= 1) {
         /* Process stdin in a single process. */
         count_words(&word_counts, stdin);
     } else {
-        pid_t pid = fork();
-    
-        if (pid == 0) { // we are in the child process
-            printf("Hello from the child process!\n");
-            exit (0); // terminates the child process
-        } else {
-            // now in the parent process
-            waitpid(pid, NULL, 0);
-            printf("The child process has exited. Hello from the parent!\n");
+        //pipe, parent writes file name
+
+        int pid;
+
+        for (int i = 0; i < bound; i++){
+
+            if (pipe(pipefd) == -1) {
+                perror("pipe failed");
+                exit(1);
+            }
+
+            pid = fork(); //no error, error squiggles are being dramatic today
+
+           
+            if (pid == 0) { // child process
+                close(pipefd[0]); //not using it
+                FILE *file = fopen(argv[i + 1], "r");
+                word_count_list_t locallist;
+                init_words(&locallist);
+                count_words(&locallist, file);
+                FILE *printStream = fdopen(pipefd[1], "w"); //child writes result from fprint to this one
+                fprint_words(&locallist, printStream);
+
+                fclose(printStream);
+                fclose(file);
+
+                exit(0);
+            } else { // parent process
+                close(pipefd[1]); // not using it
+                FILE *mergeReadStream = fdopen(pipefd[0], "r"); //parent reads what child wrote
+                merge_counts(&word_counts, mergeReadStream);
+
+                fclose(mergeReadStream);  
+            }
+
         }
+        
     }
 
     /* Output final result of all process' work. */

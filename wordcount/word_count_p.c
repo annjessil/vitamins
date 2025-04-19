@@ -33,6 +33,9 @@
 void init_words(word_count_list_t *wclist) {
     
     list_init(&wclist->lst); 
+    //pthread_mutex_t localLock = PTHREAD_MUTEX_INITIALIZER;
+    //&wclist->lock = localLock;
+
 }
 
 size_t len_words(word_count_list_t *wclist) {
