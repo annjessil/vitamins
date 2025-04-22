@@ -134,33 +134,20 @@ int main(unused int argc, unused char *argv[]) {
     static char line[4096];
     int line_num = 0;
     int pid;
-    int ppid;
-    int gpid;
-    int fd;
-   // int pipefd[2];
 
+    struct sigaction sa;
+    sa.sa_handler = SIG_IGN;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    sigaction(SIGINT, &sa, NULL);
+    sigaction(SIGTSTP, &sa, NULL);
+    sigaction(SIGTTOU, &sa, NULL);
+    
     /* Only print shell prompts when standard input is not a tty */
     if (shell_is_interactive) {
         fprintf(stdout, "%d: ", line_num);
     }
 
-    /*
-    We have already established that every process has a unique process ID (pid). Every process also has a
-(possibly non-unique) process group ID (pgid) which, by default, is the same as the pgid of its parent process.
-Processes can get and set their process group ID with getpgid(), setpgid(), getpgrp(), or setpgrp().
-Keep in mind that, when your shell starts a new program, it may spawn multiple processes that work
-together. All of these processes will inherit the same process group ID of the original process. So, it may be
-a good idea to put each shell subprocess in its own process group, to simplify your bookkeeping. When you
-move each subprocess into its own process group, the pgid should be equal to the pid.
-7.3 Foreground Terminal
-Every terminal has an associated “foreground” process group ID. When you type CTRL-C, your terminal
-sends a signal to every process inside the foreground process group. You can change which process group is
-in the foreground of a terminal with “tcsetpgrp(int fd, pid_t pgrp)”. The fd should be 0 for “standard
-input”.
-
- 
-    
-    */
     while (fgets(line, 4096, stdin)) {
         /* Split our line into words. */
         struct tokens *tokens = tokenize(line);
@@ -190,18 +177,30 @@ input”.
 
             args[size] = NULL;
 
+            //signal(SIGINT, SIG_IGN);
+            //signal(SIGTSTP, SIG_IGN);
+            //signal(SIGTTOU, SIG_IGN);
+
             pid = fork(); 
 
             if (pid == 0) { // child process
-                // pid = individual process id
-                //gpid = each process has gpid that by default is same as parent 
-                // move each process into its own process group, pid = pgid
-                gpid = getpgid(pid);
-                //fd = tcgetpgrp(gpid);
-                ppid = getppid();
-                setpgid(pid, gpid);
                 
-                tcsetpgrp(shell_terminal, pid);
+                struct sigaction sa_default;
+                sa_default.sa_handler = SIG_DFL;
+                sigemptyset(&sa_default.sa_mask);
+                sa_default.sa_flags = 0;
+                sigaction(SIGINT, &sa_default, NULL);
+                sigaction(SIGTSTP, &sa_default, NULL);
+                sigaction(SIGTTOU, &sa_default, NULL);
+                
+                //tcsetpgrp(shell_terminal, pid);
+                //signal(SIGINT, SIG_DFL);
+                //signal(SIGTSTP, SIG_DFL);
+
+                setpgid(0, 0); //since pid equals 0
+                tcsetpgrp(shell_terminal, getpid()); // child is in foreground
+               
+
                 for (int i = 0; i < size; i++){
                     if ((strcmp(args[i], "<") == 0) && ((i+1) < size)){
                         //Similarly, the syntax ”[process] < [file]” tells your shell to feed the contents of a file to the process’s standard input
@@ -248,8 +247,12 @@ input”.
                              
             } else { // parent process
                 int status;
+                signal(SIGTTOU, SIG_IGN);
+                tcsetpgrp(shell_terminal, pid);
+                signal(SIGTTOU, SIG_DFL);
+
                 waitpid(pid, &status, 0);  //waiting for children to finish
-                tcsetpgrp(shell_terminal, shell_pgid);
+                tcsetpgrp(shell_terminal, shell_pgid); // take terminal back
             }
 
             free(pathCopy); //freeing memory from strdup
