@@ -283,8 +283,7 @@ bool load(const char *file_name, void (**eip)(void), void **esp) {
 
     /* Set up stack. */
     if (!setup_stack(esp))
-        goto done;
-
+        goto done; 
     /* Start address. */
     *eip = (void (*)(void)) ehdr.e_entry;
 
@@ -412,8 +411,16 @@ static bool setup_stack(void **esp) {
         else
             palloc_free_page(kpage);
     }
+
+    *esp -= (sizeof(void *) + sizeof(char**) + sizeof(int));
+
+    *(void **)*esp = NULL;   //fake argc
+    *(char ***)*esp = (char **)(*esp + sizeof(void *)); //fake argv   
+    *(int *)*esp = 0; //fake argv part 2
+
     return success;
 }
+
 
 /* Adds a mapping from user virtual address UPAGE to kernel
    virtual address KPAGE to the page table.
