@@ -28,5 +28,34 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
         f->eax = args[1];
         printf("%s: exit(%d)\n", thread_current()->name, args[1]);
         thread_exit();
+    } else if (args[0] ==  SYS_INCREMENT){
+        int val = args[1];
+        f->eax = val + 1; 
+    } else if (args[0] == SYS_WRITE){
+        int fd = args[1];
+        const void *buffer = args[2];
+        unsigned size = args[3];
+
+        
+
+
+
+
+        /*System Call: int write(int fd, const void *buffer, unsigned size) This system call writes size bytes
+from buffer to the open file corresponding to fd. It returns the number of bytes actually written,
+which may be less than size.
+Standard output corresponds to the file descriptor 1. For this assignment, your implementation of the write
+system call only needs to work for file descriptor 1, not any other file descriptors. As before, you do not need
+to validate system call arguments or their addresses for this assignment.
+Writes to standard output (file descriptor 1) should be output via the console. In the Pintos kernel,
+you can accomplish this by calling the putbuf function declared in lib/kernel/stdio.h and defined in
+lib/kernel/console.c.
+The interface provided by the write system call allows it to process fewer bytes than it is provided (i.e., return
+short), since the number of bytes that it actually processed is returned to the caller. For standard output
+(file descriptor 1), your implementation should always process all of the bytes on a successful
+call to write. Additionally, these bytes should be processed via a single call to putbuf.
+The write-stdout test checks that the write system call is implemented properly for standard output (file
+descriptor 1). You should read the source code for this test (by now, you should know where to find it).
+Once you complete this part of the assignment, the write-stdout test should pass.*/
     }
 }
