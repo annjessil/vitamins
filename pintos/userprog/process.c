@@ -23,7 +23,7 @@
 
 static struct semaphore temporary;
 static thread_func start_process NO_RETURN;
-static bool load(const char *cmdline, void (**eip)(void), void **esp);
+static bool load(const char *cmdline, void (**eip)(void), void **esp, const char *cmdline_copy);
 
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
@@ -41,10 +41,22 @@ tid_t process_execute(const char *file_name) {
         return TID_ERROR;
     strlcpy(fn_copy, file_name, PGSIZE);
 
+    char *original_copy = palloc_get_page(0);
+    if (original_copy == NULL)
+        return TID_ERROR;
+
+    strlcpy(original_copy, file_name, PGSIZE); //copying before extracting filename
+
+    char *save_ptr;
+    char *exec_name = strtok_r(original_copy," ", &save_ptr);
+
+
     /* Create a new thread to execute FILE_NAME. */
-    tid = thread_create(file_name, PRI_DEFAULT, start_process, fn_copy);
-    if (tid == TID_ERROR)
+    tid = thread_create(exec_name, PRI_DEFAULT, start_process, fn_copy);
+    if (tid == TID_ERROR){
         palloc_free_page(fn_copy);
+        palloc_free_page(original_copy);
+    }
     return tid;
 }
 
@@ -52,6 +64,18 @@ tid_t process_execute(const char *file_name) {
    running. */
 static void start_process(void *file_name_) {
     char *file_name = file_name_;
+
+    char *original_copy = palloc_get_page(0);
+    if (original_copy == NULL)
+        thread_exit();
+
+    strlcpy(original_copy, file_name, PGSIZE); //copying before extracting filename
+
+    char *save_ptr;
+    char *exec_name = strtok_r(original_copy," ", &save_ptr);
+    //printf("argv[0] = '[%s]'\n", exec_name);
+
+
     struct intr_frame if_;
     bool success;
 
@@ -60,10 +84,10 @@ static void start_process(void *file_name_) {
     if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
     if_.cs = SEL_UCSEG;
     if_.eflags = FLAG_IF | FLAG_MBS;
-    success = load(file_name, &if_.eip, &if_.esp);
+    success = load(exec_name, &if_.eip, &if_.esp, file_name);
 
     /* If load failed, quit. */
-    palloc_free_page(file_name);
+    palloc_free_page(original_copy);
     if (!success)
         thread_exit();
 
@@ -189,7 +213,7 @@ struct Elf32_Phdr {
 #define PF_W 2 /* Writable. */
 #define PF_R 4 /* Readable. */
 
-static bool setup_stack(void **esp);
+static bool setup_stack(void **esp, const char *file_name);
 static bool validate_segment(const struct Elf32_Phdr *, struct file *);
 static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
                          uint32_t read_bytes, uint32_t zero_bytes,
@@ -199,13 +223,18 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
    Stores the executable's entry point into *EIP
    and its initial stack pointer into *ESP.
    Returns true if successful, false otherwise. */
-bool load(const char *file_name, void (**eip)(void), void **esp) {
+bool load(const char *file_name, void (**eip)(void), void **esp, const char *original_copy) {
+    //file_name is name of file extracted from original input
+    //original_copy is the original unmodified string
+
     struct thread *t = thread_current();
     struct Elf32_Ehdr ehdr;
     struct file *file = NULL;
     off_t file_ofs;
     bool success = false;
     int i;
+
+
 
     /* Allocate and activate page directory. */
     t->pagedir = pagedir_create();
@@ -282,8 +311,9 @@ bool load(const char *file_name, void (**eip)(void), void **esp) {
     }
 
     /* Set up stack. */
-    if (!setup_stack(esp))
-        goto done; 
+    if (!setup_stack(esp, original_copy))
+        goto done;
+
     /* Start address. */
     *eip = (void (*)(void)) ehdr.e_entry;
 
@@ -399,28 +429,98 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
 
 /* Create a minimal stack by mapping a zeroed page at the top of
    user virtual memory. */
-static bool setup_stack(void **esp) {
+
+static bool setup_stack(void **esp, const char *file_name) {
     uint8_t *kpage;
     bool success = false;
+
+    char *fncopy = palloc_get_page(0);
+    if (fncopy == NULL)
+        return false;
+
+    strlcpy(fncopy, file_name, PGSIZE);
+
+    int num_spaces = 1; //a b c, has value 3
+    for (int i = 0; file_name[i] != '\0'; i++) {
+        if (file_name[i] == ' ') {
+            num_spaces++;
+        }
+    }
+
+    char *args[num_spaces];
+    char *token;
+    char *save;
+    int j = 0; //a b c ends with val 3
+    token = strtok_r(fncopy, " ", &save);
+    while (token != NULL){
+        args[j] = token;
+        j++;
+        token = strtok_r(NULL, " ", &save);
+    }
+
+    int actualArgs = j; //if theres a variable number of whitespaces
+
+
+
+
 
     kpage = palloc_get_page(PAL_USER | PAL_ZERO);
     if (kpage != NULL) {
         success = install_page(((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
-        if (success)
+        if (success) {
             *esp = PHYS_BASE;
-        else
+            //int total = (sizeof(void *) + sizeof(char**) + sizeof(int));
+            //*esp -= total + (4 - total%4)            
+            char *arg_ptrs[actualArgs];
+            for (int i = actualArgs - 1; i >= 0; i--) {
+                size_t len = strlen(args[i]) + 1;
+                *esp -= len;
+                memcpy(*esp, args[i], len);
+                arg_ptrs[i] = *esp;  
+            }
+            
+            *esp -= (uintptr_t)(*esp) % 4;
+
+            *esp -= sizeof(char *);
+            *(char **)(*esp) = NULL;
+
+            for (int i = actualArgs - 1; i >= 0; i--) {
+                *esp -= sizeof(char *);
+                *(char **)(*esp) = arg_ptrs[i];
+            }
+
+            char **adr = (char **)(*esp);
+
+            *esp -= ((uintptr_t)(*esp) - sizeof(char**) - sizeof(int)) % 16;
+
+            *esp -= sizeof(char **);
+            *(char ***)(*esp) = adr;
+
+            *esp -= sizeof(int);
+            *(int *)(*esp) = actualArgs;
+
+            *esp -= sizeof(void *);
+            *(void **)(*esp) = NULL;
+            //printf("argv[0] = '[%s]'\n", fncopy);
+            /*
+            printf("file name \n");
+            printf(fncopy);
+            printf("=== STACK DUMP START ===\n");
+            hex_dump((uintptr_t)*esp, *esp, PHYS_BASE - (uintptr_t)*esp, true);
+            printf("=== STACK DUMP END ===\n");
+            */
+
+        } else{
             palloc_free_page(kpage);
+            
+        }
+        
+        palloc_free_page(fncopy);
+
+            
     }
-
-    *esp -= (sizeof(void *) + sizeof(char**) + sizeof(int));
-
-    *(void **)*esp = NULL;   //fake argc
-    *(char ***)*esp = (char **)(*esp + sizeof(void *)); //fake argv   
-    *(int *)*esp = 0; //fake argv part 2
-
     return success;
 }
-
 
 /* Adds a mapping from user virtual address UPAGE to kernel
    virtual address KPAGE to the page table.
