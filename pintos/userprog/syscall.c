@@ -35,5 +35,24 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
         const void *buffer = args[2];
         unsigned size = args[3];
         putbuf(buffer, size);
+    } else if (args[0] == SYS_CREATE){
+        const void *buffer = args[2];
+        unsigned size = args[3];
+        putbuf(buffer, size);
+    } else if (args[0] == SYS_REMOVE){
+
+    } else if (args[0] == SYS_OPEN){
+
+    } else if (args[0] == SYS_FILESIZE){
+
+    } else if (args[0] == SYS_READ){
+        
+    } else if (args[0] == SYS_SEEK){
+
+    } else if (args[0] == SYS_TELL){
+
+    } else if (args[0] == SYS_CLOSE){
+
     }
+
 }
